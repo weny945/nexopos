@@ -1,0 +1,2 @@
+-- NexoPOS Options Migration SQL
+
