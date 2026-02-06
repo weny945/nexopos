@@ -51,6 +51,7 @@ storage/opus-backups
 .idea
 .vs
 .vscode
+.claude
 public/hot
 .phpunit.cache/test-results
 storage/dotenv-editor
