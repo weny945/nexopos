@@ -52,6 +52,8 @@ storage/opus-backups
 .vs
 .vscode
 .claude
+database/backups/
+options_import.sql
 public/hot
 .phpunit.cache/test-results
 storage/dotenv-editor
