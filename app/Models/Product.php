@@ -202,6 +202,23 @@ class Product extends NsModel
      */
     public function scopeFindUsingBarcode( $query, $barcode )
     {
+        // Check if this is an ITF-14 barcode (14 digits, used for packaging)
+        // ITF-14 format: [1 digit packaging indicator] + [13 digits EAN-13]
+        // Example: 16902890259586 → 6902890259586 (remove leading '1')
+        if ( strlen( $barcode ) === 14 && ctype_digit( $barcode ) ) {
+            // Convert ITF-14 to EAN-13 by removing the first digit (packaging indicator)
+            $ean13Barcode = substr( $barcode, 1 );
+
+            // Try to find product using the converted EAN-13 barcode
+            $result = $query->where( 'barcode', $ean13Barcode )->first();
+
+            // If found with EAN-13, return a query that will find it
+            if ( $result instanceof self ) {
+                return $query->where( 'id', $result->id );
+            }
+        }
+
+        // Default: search with original barcode
         return $query->where( 'barcode', $barcode );
     }
 
