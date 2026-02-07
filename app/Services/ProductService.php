@@ -252,6 +252,14 @@ class ProductService
      */
     public function createSimpleProduct( $data )
     {
+        /**
+         * Convert 14-digit ITF-14 barcodes to 13-digit EAN-13
+         * by removing the first digit (packaging indicator)
+         */
+        if ( ! empty( $data[ 'barcode' ] ) && strlen( $data[ 'barcode' ] ) === 14 && ctype_digit( $data[ 'barcode' ] ) ) {
+            $data[ 'barcode' ] = substr( $data[ 'barcode' ], 1 );
+        }
+
         if ( ! empty( $data[ 'barcode' ] ) && $this->getProductUsingBarcode( $data[ 'barcode' ] ) instanceof Product ) {
             throw new Exception( sprintf(
                 __( 'The provided barcode "%s" is already in use.' ),
@@ -445,6 +453,14 @@ class ProductService
         event( new ProductBeforeUpdatedEvent( $product ) );
 
         $this->releaseProductTaxes( $product );
+
+        /**
+         * Convert 14-digit ITF-14 barcodes to 13-digit EAN-13
+         * by removing the first digit (packaging indicator)
+         */
+        if ( ! empty( $fields[ 'barcode' ] ) && strlen( $fields[ 'barcode' ] ) === 14 && ctype_digit( $fields[ 'barcode' ] ) ) {
+            $fields[ 'barcode' ] = substr( $fields[ 'barcode' ], 1 );
+        }
 
         if ( empty( $fields[ 'barcode' ] ) ) {
             $fields[ 'barcode' ] = $this->barcodeService->generateRandomBarcode( $fields[ 'barcode_type' ] );
@@ -705,6 +721,14 @@ class ProductService
          * @param array fields
          */
         extract( $data );
+
+        /**
+         * Convert 14-digit ITF-14 barcodes to 13-digit EAN-13
+         * by removing the first digit (packaging indicator)
+         */
+        if ( $field === 'barcode' && ! empty( $value ) && strlen( $value ) === 14 && ctype_digit( $value ) ) {
+            $value = substr( $value, 1 );
+        }
 
         if ( ! in_array( $field, [ 'units', 'images', 'groups' ] ) && ! is_array( $value ) ) {
             $product->$field = $value;
