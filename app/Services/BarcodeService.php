@@ -145,16 +145,18 @@ class BarcodeService
                 $generator->getBarcode( $barcode, $realType, 3, 30 )
             );
         } catch ( Exception $exception ) {
-            $insight = ( $exception->getMessage() ?: __( 'N/A' ) );
+            // Log barcode generation error but don't throw exception
+            // This allows products with invalid checksums to be saved
+            \Log::warning( sprintf(
+                'Failed to generate barcode image for "%s" (type: %s): %s',
+                $barcode,
+                $realType,
+                $exception->getMessage()
+            ) );
 
-            throw new Exception(
-                sprintf(
-                    __( 'An error has occurred while creating a barcode "%s" using the type "%s" for the product. Make sure the barcode value is correct for the barcode type selected. Additional insight : %s' ),
-                    $barcode,
-                    $realType,
-                    $insight
-                )
-            );
+            return false;
         }
+
+        return true;
     }
 }
