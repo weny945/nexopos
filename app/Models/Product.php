@@ -204,12 +204,15 @@ class Product extends NsModel
     {
         // Check if this is an ITF-14 barcode (14 digits, used for packaging)
         // ITF-14 format: [1 digit packaging indicator] + [13 digits EAN-13]
-        // Example: 16902890259586 → 6902890259586 (remove leading '1')
+        // Example: 16902890259586 → 6902890259586 → 6902890259589 (corrected)
         if ( strlen( $barcode ) === 14 && ctype_digit( $barcode ) ) {
             // Convert ITF-14 to EAN-13 by removing the first digit (packaging indicator)
             $ean13Barcode = substr( $barcode, 1 );
 
-            // Try to find product using the converted EAN-13 barcode
+            // Auto-correct EAN-13 checksum if needed
+            $ean13Barcode = $this->correctEAN13Checksum( $ean13Barcode );
+
+            // Try to find product using the converted and corrected EAN-13 barcode
             $result = $query->where( 'barcode', $ean13Barcode )->first();
 
             // If found with EAN-13, return a query that will find it
@@ -218,8 +221,56 @@ class Product extends NsModel
             }
         }
 
+        // For 13-digit barcodes, also try to correct the checksum
+        if ( strlen( $barcode ) === 13 && ctype_digit( $barcode ) ) {
+            $correctedBarcode = $this->correctEAN13Checksum( $barcode );
+
+            // If checksum was corrected, search with the corrected version
+            if ( $correctedBarcode !== $barcode ) {
+                $result = $query->where( 'barcode', $correctedBarcode )->first();
+                if ( $result instanceof self ) {
+                    return $query->where( 'id', $result->id );
+                }
+            }
+        }
+
         // Default: search with original barcode
         return $query->where( 'barcode', $barcode );
+    }
+
+    /**
+     * Correct EAN-13 checksum if invalid (helper method)
+     *
+     * @param string $barcode 13-digit EAN-13 barcode
+     * @return string EAN-13 barcode with corrected checksum
+     */
+    private function correctEAN13Checksum( string $barcode ): string
+    {
+        if ( strlen( $barcode ) !== 13 || ! ctype_digit( $barcode ) ) {
+            return $barcode;
+        }
+
+        // Calculate the correct checksum
+        $sum = 0;
+        for ( $i = 0; $i < 12; $i++ ) {
+            $digit = intval( $barcode[ $i ] );
+            // Odd positions (0, 2, 4...) multiply by 1, even positions by 3
+            if ( $i % 2 == 0 ) {
+                $sum += $digit * 1;
+            } else {
+                $sum += $digit * 3;
+            }
+        }
+
+        $correctChecksum = ( 10 - ( $sum % 10 ) ) % 10;
+        $currentChecksum = intval( $barcode[ 12 ] );
+
+        // If checksum is incorrect, correct it
+        if ( $correctChecksum !== $currentChecksum ) {
+            return substr( $barcode, 0, 12 ) . $correctChecksum;
+        }
+
+        return $barcode;
     }
 
     /**
