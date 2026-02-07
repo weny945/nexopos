@@ -68,3 +68,9 @@ public/hot
 storage/dotenv-editor
 .cloud
 ns
+
+# Test files
+test_*.php
+fix_*.php
+fix_*.ps1
+*.ps1
