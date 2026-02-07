@@ -260,7 +260,7 @@ class ProductService
         }
 
         if ( empty( $data[ 'barcode_type' ] ) ) {
-            $data[ 'barcode_type' ] = 'ean8';
+            $data[ 'barcode_type' ] = 'ean13';
         }
 
         if ( empty( $data[ 'barcode' ] ) ) {
