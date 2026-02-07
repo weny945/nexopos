@@ -54,6 +54,15 @@ storage/opus-backups
 .claude
 database/backups/
 options_import.sql
+
+# IDE files
+*.sln
+*.slnx
+*.phpproj
+*.user
+
+# Session files
+storage/framework/sessions/*
 public/hot
 .phpunit.cache/test-results
 storage/dotenv-editor
