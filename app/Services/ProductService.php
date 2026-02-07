@@ -260,6 +260,13 @@ class ProductService
             $data[ 'barcode' ] = substr( $data[ 'barcode' ], 1 );
         }
 
+        /**
+         * Auto-correct EAN-13 checksum if invalid
+         */
+        if ( ! empty( $data[ 'barcode' ] ) && strlen( $data[ 'barcode' ] ) === 13 && ctype_digit( $data[ 'barcode' ] ) && $data[ 'barcode_type' ] === 'ean13' ) {
+            $data[ 'barcode' ] = $this->correctEAN13Checksum( $data[ 'barcode' ] );
+        }
+
         if ( ! empty( $data[ 'barcode' ] ) && $this->getProductUsingBarcode( $data[ 'barcode' ] ) instanceof Product ) {
             throw new Exception( sprintf(
                 __( 'The provided barcode "%s" is already in use.' ),
@@ -460,6 +467,13 @@ class ProductService
          */
         if ( ! empty( $fields[ 'barcode' ] ) && strlen( $fields[ 'barcode' ] ) === 14 && ctype_digit( $fields[ 'barcode' ] ) ) {
             $fields[ 'barcode' ] = substr( $fields[ 'barcode' ], 1 );
+        }
+
+        /**
+         * Auto-correct EAN-13 checksum if invalid
+         */
+        if ( ! empty( $fields[ 'barcode' ] ) && strlen( $fields[ 'barcode' ] ) === 13 && ctype_digit( $fields[ 'barcode' ] ) && $fields[ 'barcode_type' ] === 'ean13' ) {
+            $fields[ 'barcode' ] = $this->correctEAN13Checksum( $fields[ 'barcode' ] );
         }
 
         if ( empty( $fields[ 'barcode' ] ) ) {
@@ -728,6 +742,13 @@ class ProductService
          */
         if ( $field === 'barcode' && ! empty( $value ) && strlen( $value ) === 14 && ctype_digit( $value ) ) {
             $value = substr( $value, 1 );
+        }
+
+        /**
+         * Auto-correct EAN-13 checksum if invalid
+         */
+        if ( $field === 'barcode' && ! empty( $value ) && strlen( $value ) === 13 && ctype_digit( $value ) && isset( $fields[ 'barcode_type' ] ) && $fields[ 'barcode_type' ] === 'ean13' ) {
+            $value = $this->correctEAN13Checksum( $value );
         }
 
         if ( ! in_array( $field, [ 'units', 'images', 'groups' ] ) && ! is_array( $value ) ) {
@@ -2628,5 +2649,46 @@ class ProductService
         }
 
         return ! $query->exists();
+    }
+
+    /**
+     * Correct EAN-13 checksum if invalid
+     *
+     * @param string $barcode 13-digit EAN-13 barcode
+     * @return string EAN-13 barcode with corrected checksum
+     */
+    private function correctEAN13Checksum( string $barcode ): string
+    {
+        if ( strlen( $barcode ) !== 13 || ! ctype_digit( $barcode ) ) {
+            return $barcode;
+        }
+
+        // Calculate the correct checksum
+        $sum = 0;
+        for ( $i = 0; $i < 12; $i++ ) {
+            $digit = intval( $barcode[ $i ] );
+            // Odd positions (0, 2, 4...) multiply by 1, even positions by 3
+            if ( $i % 2 == 0 ) {
+                $sum += $digit * 1;
+            } else {
+                $sum += $digit * 3;
+            }
+        }
+
+        $correctChecksum = ( 10 - ( $sum % 10 ) ) % 10;
+        $currentChecksum = intval( $barcode[ 12 ] );
+
+        // If checksum is incorrect, correct it and log
+        if ( $correctChecksum !== $currentChecksum ) {
+            \Log::info( sprintf(
+                'Auto-correcting EAN-13 checksum: %s → %s',
+                $barcode,
+                substr( $barcode, 0, 12 ) . $correctChecksum
+            ) );
+
+            return substr( $barcode, 0, 12 ) . $correctChecksum;
+        }
+
+        return $barcode;
     }
 }
